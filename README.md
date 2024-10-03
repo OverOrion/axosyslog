@@ -197,3 +197,5 @@ syslog-ng and the [Logging operator for Kubernetes](https://github.com/kube-logg
 To learn more about our products and our open-source projects, visit the
 [Axoflow blog](https://axoflow.com/blog/), or [subscribe to the Axoflow
 newsletter](https://axoflow.com/#newsletter-subscription).
+
+foobar
