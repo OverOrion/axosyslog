@@ -232,6 +232,8 @@ static inline LogPathOptions *
 log_path_options_chain(LogPathOptions *local_path_options, const LogPathOptions *lpo_previous_hop)
 {
   *local_path_options = *lpo_previous_hop;
+  if(lpo_previous_hop->filterx_context)
+    filterx_eval_init_context(local_path_options->filterx_context, lpo_previous_hop->filterx_context);
   return local_path_options;
 }
 

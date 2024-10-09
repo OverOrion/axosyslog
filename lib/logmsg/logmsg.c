@@ -315,6 +315,8 @@ log_msg_write_protect(LogMessage *self)
 LogMessage *
 log_msg_make_writable(LogMessage **pself, const LogPathOptions *path_options)
 {
+  if (path_options->filterx_context)
+    filterx_scope_make_writable(&path_options->filterx_context->scope);
   if (log_msg_is_write_protected(*pself))
     {
       LogMessage *new;
