@@ -79,7 +79,7 @@ void filterx_eval_deinit_context(FilterXEvalContext *context);
 static inline void
 filterx_eval_sync_message(FilterXEvalContext *context, LogMessage **pmsg, const LogPathOptions *path_options)
 {
-  if (!context)
+  if (!context || !context->scope)
     return;
 
   if (!filterx_scope_is_dirty(context->scope))
