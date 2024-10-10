@@ -853,7 +853,7 @@ static void
 log_writer_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
 {
   LogWriter *self = (LogWriter *) s;
-  LogPathOptions local_path_options;
+  LogPathOptions local_path_options = LOG_PATH_OPTIONS_INIT;
   gint mark_mode = self->options->mark_mode;
 
   if (!path_options->flow_control_requested &&

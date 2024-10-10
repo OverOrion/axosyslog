@@ -44,7 +44,7 @@ _queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
   stats_counter_inc(self->ingress_counter);
 
   gboolean matched = TRUE;
-  LogPathOptions local_path_options;
+  LogPathOptions local_path_options = LOG_PATH_OPTIONS_INIT;
   log_path_options_chain(&local_path_options, path_options);
   local_path_options.matched = &matched;
 

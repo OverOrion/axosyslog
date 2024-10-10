@@ -68,7 +68,7 @@ void
 _queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 {
   StatefulParser *self = (StatefulParser *) s;
-  LogPathOptions local_path_options;
+  LogPathOptions local_path_options = LOG_PATH_OPTIONS_INIT;
   gboolean matched = TRUE;
 
   log_path_options_chain(&local_path_options, path_options);

@@ -1162,7 +1162,7 @@ log_threaded_dest_driver_queue(LogPipe *s, LogMessage *msg,
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *)s;
   LogThreadedDestWorker *dw = _lookup_worker(self, msg);
-  LogPathOptions local_path_options;
+  LogPathOptions local_path_options = LOG_PATH_OPTIONS_INIT;
 
   if (!path_options->flow_control_requested)
     path_options = log_msg_break_ack(msg, path_options, &local_path_options);

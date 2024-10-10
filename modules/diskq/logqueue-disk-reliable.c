@@ -392,7 +392,7 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
        * Keep the message in memory for fast-path.
        * Set its ack_needed to FALSE, because we have already acked it.
        */
-      LogPathOptions local_path_options;
+      LogPathOptions local_path_options = LOG_PATH_OPTIONS_INIT;
       log_path_options_chain(&local_path_options, path_options);
       local_path_options.ack_needed = FALSE;
       _push_to_memory_queue_tail(self->front_cache, message_position, msg, &local_path_options);

@@ -483,7 +483,7 @@ log_pipe_forward_msg(LogPipe *self, LogMessage *msg, const LogPathOptions *path_
 static inline void
 log_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 {
-  LogPathOptions local_path_options;
+  LogPathOptions local_path_options = LOG_PATH_OPTIONS_INIT;
   g_assert((s->flags & PIF_INITIALIZED) != 0);
 
   if (G_UNLIKELY(pipe_single_step_hook))
