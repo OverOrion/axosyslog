@@ -222,8 +222,30 @@ struct _LogPathOptions
   FilterXEvalContext *filterx_context;
 };
 
-#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, NULL, NULL}
-#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, NULL, NULL }
+#define LOG_PATH_OPTIONS_INIT                          \
+    ({                                                        \
+        FilterXEvalContext filterx_eval_context = {0};       \
+        (LogPathOptions) {                                     \
+            .ack_needed = TRUE,                               \
+            .flow_control_requested = FALSE,                  \
+            .matched = NULL,                                  \
+            .lpo_parent_junction = NULL,                      \
+            .filterx_context = &filterx_eval_context          \
+        };                                                    \
+    })
+
+
+#define LOG_PATH_OPTIONS_INIT_NOACK                          \
+      ({                                                        \
+        FilterXEvalContext filterx_eval_context = {0};       \
+        (LogPathOptions) {                                     \
+            .ack_needed = FALSE,                               \
+            .flow_control_requested = FALSE,                  \
+            .matched = NULL,                                  \
+            .lpo_parent_junction = NULL,                      \
+            .filterx_context = &filterx_eval_context          \
+        };                                                    \
+    })
 
 /*
  * Embed a step in our LogPathOptions chain.
