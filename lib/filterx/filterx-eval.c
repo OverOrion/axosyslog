@@ -38,6 +38,7 @@ TLS_BLOCK_END;
 FilterXEvalContext *
 filterx_eval_get_context(void)
 {
+  g_assert(eval_context);
   return eval_context;
 }
 
@@ -181,8 +182,9 @@ void
 filterx_eval_chain_context(FilterXEvalContext *context, FilterXEvalContext *previous_context)
 {
   g_assert(previous_context);
+  g_assert(context);
 
-  memset(context, 0, sizeof(*context));
+  memset(context, 0, sizeof(FilterXEvalContext));
   context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
 
   FilterXScope *scope = filterx_scope_ref(previous_context->scope);

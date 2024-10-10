@@ -81,9 +81,13 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
   LogMultiplexer *self = (LogMultiplexer *) s;
   gint i;
   gboolean matched;
-  LogPathOptions local_path_options;
+  LogPathOptions local_path_options = LOG_PATH_OPTIONS_INIT;
+  FilterXEvalContext eval_context;
   gboolean delivered = FALSE;
   gint fallback;
+
+  if(path_options->filterx_context)
+    local_path_options.filterx_context = &eval_context;
 
   log_path_options_push_junction(&local_path_options, &matched, path_options);
   if (_has_multiple_arcs(self))

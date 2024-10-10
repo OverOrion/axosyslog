@@ -231,9 +231,15 @@ struct _LogPathOptions
 static inline LogPathOptions *
 log_path_options_chain(LogPathOptions *local_path_options, const LogPathOptions *lpo_previous_hop)
 {
-  *local_path_options = *lpo_previous_hop;
+  local_path_options->ack_needed = lpo_previous_hop->ack_needed;
+  local_path_options->flow_control_requested = lpo_previous_hop->flow_control_requested;
+  local_path_options->lpo_parent_junction = lpo_previous_hop->lpo_parent_junction;
+  local_path_options->matched = lpo_previous_hop->matched;
   if(lpo_previous_hop->filterx_context)
-    filterx_eval_init_context(local_path_options->filterx_context, lpo_previous_hop->filterx_context);
+  {
+    g_assert(local_path_options->filterx_context);
+    filterx_eval_chain_context(local_path_options->filterx_context, lpo_previous_hop->filterx_context);
+  }
   return local_path_options;
 }
 
@@ -250,7 +256,12 @@ log_path_options_push_junction(LogPathOptions *local_path_options,
                                gboolean *matched,
                                const LogPathOptions *lpo_parent_junction)
 {
-  *local_path_options = *lpo_parent_junction;
+  local_path_options->ack_needed = lpo_parent_junction->ack_needed;
+  local_path_options->flow_control_requested = lpo_parent_junction->flow_control_requested;
+  local_path_options->lpo_parent_junction = lpo_parent_junction->lpo_parent_junction;
+  local_path_options->matched = lpo_parent_junction->matched;
+  if(lpo_parent_junction->filterx_context)
+    filterx_eval_chain_context(local_path_options->filterx_context, lpo_parent_junction->filterx_context);
   local_path_options->matched = matched;
   local_path_options->lpo_parent_junction = lpo_parent_junction;
 }

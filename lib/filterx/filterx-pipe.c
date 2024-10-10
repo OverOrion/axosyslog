@@ -53,10 +53,13 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
   LogPathOptions local_path_options;
   FilterXEvalResult eval_res;
 
-  path_options = log_path_options_chain(&local_path_options, path_options);
-  filterx_eval_init_context(&eval_context, path_options->filterx_context);
-  g_assert(eval_context.weak_refs);
+  if(!path_options->filterx_context)
+    filterx_eval_init_context(&eval_context);
+
   local_path_options.filterx_context = &eval_context;
+  path_options = log_path_options_chain(&local_path_options, path_options);
+  g_assert(eval_context.weak_refs);
+  g_assert(path_options->filterx_context);
 
   msg_trace(">>>>>> filterx rule evaluation begin",
             evt_tag_str("rule", self->name),

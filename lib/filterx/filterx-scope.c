@@ -170,7 +170,7 @@ filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
 
   if (_lookup_variable(self, handle, &v))
     {
-      if (self->dirty && !v->declared && v->generation != self->generation)
+      if (!v->declared && v->generation != self->generation)
         return NULL;
       return v;
     }
