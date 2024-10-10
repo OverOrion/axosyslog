@@ -72,7 +72,8 @@ EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 
 void filterx_eval_store_weak_ref(FilterXObject *object);
 
-void filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previous_context);
+void filterx_eval_init_context(FilterXEvalContext *context);
+void filterx_eval_chain_context(FilterXEvalContext *context, FilterXEvalContext *previous_context);
 void filterx_eval_deinit_context(FilterXEvalContext *context);
 
 static inline void

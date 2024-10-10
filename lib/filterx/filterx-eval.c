@@ -178,25 +178,36 @@ fail:
 }
 
 void
-filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previous_context)
+filterx_eval_chain_context(FilterXEvalContext *context, FilterXEvalContext *previous_context)
 {
-  FilterXScope *scope;
-
-  if (previous_context)
-    scope = filterx_scope_ref(previous_context->scope);
-  else
-    scope = filterx_scope_new();
-  filterx_scope_make_writable(&scope);
+  g_assert(previous_context);
 
   memset(context, 0, sizeof(*context));
   context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+
+  FilterXScope *scope = filterx_scope_ref(previous_context->scope);
+  filterx_scope_make_writable(&scope);
   context->scope = scope;
 
-  if (previous_context)
-    context->weak_refs = previous_context->weak_refs;
-  else
-    context->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  context->weak_refs = previous_context->weak_refs;
   context->previous_context = previous_context;
+
+  context->eval_control_modifier = FXC_NOTSET;
+  filterx_eval_set_context(context);
+}
+
+void
+filterx_eval_init_context(FilterXEvalContext *context)
+{
+  memset(context, 0, sizeof(*context));
+  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+
+  FilterXScope *scope = filterx_scope_new();
+  filterx_scope_make_writable(&scope);
+  context->scope = scope;
+
+  context->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  context->previous_context = NULL;
 
   context->eval_control_modifier = FXC_NOTSET;
   filterx_eval_set_context(context);
