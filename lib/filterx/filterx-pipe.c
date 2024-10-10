@@ -53,7 +53,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
   LogPathOptions local_path_options;
   FilterXEvalResult eval_res;
 
-  if(!path_options->filterx_context)
+  if(!path_options->filterx_context->scope)
     filterx_eval_init_context(&eval_context);
 
   local_path_options.filterx_context = &eval_context;
