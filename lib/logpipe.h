@@ -257,12 +257,13 @@ log_path_options_chain(LogPathOptions *local_path_options, const LogPathOptions 
   local_path_options->flow_control_requested = lpo_previous_hop->flow_control_requested;
   local_path_options->lpo_parent_junction = lpo_previous_hop->lpo_parent_junction;
   local_path_options->matched = lpo_previous_hop->matched;
-  if(lpo_previous_hop->filterx_context && lpo_previous_hop->filterx_context->scope && local_path_options->filterx_context->scope)
-  {
-    g_assert(local_path_options->filterx_context);
-    g_assert(lpo_previous_hop->filterx_context->scope);
-    filterx_eval_chain_context(local_path_options->filterx_context, lpo_previous_hop->filterx_context);
-  }
+  if(lpo_previous_hop->filterx_context && lpo_previous_hop->filterx_context->scope
+      && local_path_options->filterx_context->scope)
+    {
+      g_assert(local_path_options->filterx_context);
+      g_assert(lpo_previous_hop->filterx_context->scope);
+      filterx_eval_chain_context(local_path_options->filterx_context, lpo_previous_hop->filterx_context);
+    }
   return local_path_options;
 }
 
