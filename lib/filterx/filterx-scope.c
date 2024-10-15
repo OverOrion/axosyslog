@@ -182,6 +182,15 @@ filterx_scope_map_variable_to_handle(const gchar *name, FilterXVariableType type
   return (FilterXVariableHandle) nv_handle | FILTERX_HANDLE_FLOATING_BIT;
 }
 
+static gboolean
+filterx_scope_validate_variable(FilterXScope *self, FilterXVariable *variable)
+{
+  if (filterx_variable_handle_is_floating(variable->handle) &&
+      !variable->declared && variable->generation != self->generation)
+    return FALSE;
+  return TRUE;
+}
+
 FilterXVariable *
 filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
 {
@@ -189,8 +198,7 @@ filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
 
   if (filterx_scope_lookup_variable_without_validation(self, handle, &v))
     {
-      if (filterx_variable_handle_is_floating(handle) &&
-          !v->declared && v->generation != self->generation)
+      if (!filterx_scope_validate_variable(self, v))
         return NULL;
       return v;
     }
@@ -271,8 +279,7 @@ filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func,
       if (!variable->value)
         continue;
 
-      if (filterx_variable_handle_is_floating(variable->handle) &&
-          !variable->declared && variable->generation != self->generation)
+      if (!filterx_scope_validate_variable(self, variable))
         continue;
 
       if (!func(variable, user_data))
