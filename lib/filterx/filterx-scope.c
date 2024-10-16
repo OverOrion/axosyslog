@@ -105,8 +105,9 @@ struct _FilterXScope
   guint32 generation:20, write_protected, dirty, syncable, log_msg_has_changes;
 };
 
-static gboolean
-_lookup_variable(FilterXScope *self, FilterXVariableHandle handle, FilterXVariable **v_slot)
+gboolean
+filterx_scope_lookup_variable_without_validation(FilterXScope *self, FilterXVariableHandle handle,
+                                                 FilterXVariable **v_slot)
 {
   gint l, h, m;
 
@@ -186,7 +187,7 @@ filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
 {
   FilterXVariable *v;
 
-  if (_lookup_variable(self, handle, &v))
+  if (filterx_scope_lookup_variable_without_validation(self, handle, &v))
     {
       if (filterx_variable_handle_is_floating(handle) &&
           !v->declared && v->generation != self->generation)
@@ -203,7 +204,7 @@ _register_variable(FilterXScope *self,
 {
   FilterXVariable v, *v_slot;
 
-  if (_lookup_variable(self, handle, &v_slot))
+  if (filterx_scope_lookup_variable_without_validation(self, handle, &v_slot))
     {
       /* already present */
       if (v_slot->generation != self->generation)

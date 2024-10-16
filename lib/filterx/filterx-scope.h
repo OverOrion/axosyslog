@@ -76,6 +76,8 @@ FilterXVariable *filterx_scope_register_declared_variable(FilterXScope *self,
                                                           FilterXObject *initial_value);
 gboolean filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data);
 void filterx_scope_invalidate_log_msg_cache(FilterXScope *self);
+gboolean filterx_scope_lookup_variable_without_validation(FilterXScope *self, FilterXVariableHandle handle,
+                                                          FilterXVariable **v_slot);
 
 /* copy on write */
 void filterx_scope_write_protect(FilterXScope *self);
