@@ -188,6 +188,8 @@ filterx_scope_validate_variable(FilterXScope *self, FilterXVariable *variable)
   if (filterx_variable_handle_is_floating(variable->handle) &&
       !variable->declared && variable->generation != self->generation)
     return FALSE;
+  if(!filterx_variable_handle_is_floating(variable->handle) && filterx_scope_has_log_msg_changes(self))
+    return FALSE;
   return TRUE;
 }
 
