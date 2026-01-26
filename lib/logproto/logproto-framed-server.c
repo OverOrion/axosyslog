@@ -23,6 +23,8 @@
 #include "logproto-framed-server.h"
 #include "logproto.h"
 #include "messages.h"
+#include "stats/stats-cluster-single.h"
+#include "stats/stats-registry.h"
 
 #include <errno.h>
 #include <ctype.h>
@@ -146,6 +148,15 @@ static gboolean
 log_proto_framed_server_extract_frame_length(LogProtoFramedServer *self, gboolean *need_more_data)
 {
   gint i;
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] =
+  {
+      // FIXME: how to get id?
+    // stats_cluster_label("id", self->super.super.id),
+    stats_cluster_label("driver", "dummy_driver_value"),
+    stats_cluster_label("transport", (self->transport_mapper->sock_type == SOCK_STREAM) ? "stream" : "dgram"),
+    stats_cluster_label("address", addr),
+  };
 
   *need_more_data = TRUE;
   self->frame_len = 0;
