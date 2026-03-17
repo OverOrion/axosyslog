@@ -58,17 +58,19 @@ public:
 
 public:
   AsyncServiceCall(SourceWorker &worker_, S *service_, ::grpc::ServerCompletionQueue *cq_)
-    : worker(worker_), service(service_), responder(&ctx), cq(cq_), status(PROCESS)
+    : worker(worker_), service(service_), responder(&ctx), cq(cq_), status(PROCESS),
+      request(google::protobuf::Arena::CreateMessage<Req>(&worker_.arena)),
+      response(google::protobuf::Arena::CreateMessage<Res>(&worker_.arena))
   {
-    service->RequestExport(&ctx, &request, &responder, cq, cq, this);
+    service->RequestExport(&ctx, request, &responder, cq, cq, this);
   }
 
 private:
   SourceWorker &worker;
   S *service;
   ::grpc::ServerAsyncResponseWriter<Res> responder;
-  Req request;
-  Res response;
+  Req *request;
+  Res *response;
 
   ::grpc::ServerCompletionQueue *cq;
   ::grpc::ServerContext ctx;
@@ -96,7 +98,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 
   int msgs_in_fetch_round = 0;
 
-  for (const ResourceSpans &resource_spans : request.resource_spans())
+  for (const ResourceSpans &resource_spans : request->resource_spans())
     {
       const Resource &resource = resource_spans.resource();
       const std::string &resource_spans_schema_url = resource_spans.schema_url();
@@ -136,7 +138,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
     log_threaded_source_worker_close_batch(&worker.super->super);
 
   status = FINISH;
-  responder.Finish(response, response_status, this);
+  responder.Finish(*response, response_status, this);
 }
 
 template <> void
@@ -154,7 +156,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 
   int msgs_in_fetch_round = 0;
 
-  for (const ResourceLogs &resource_logs : request.resource_logs())
+  for (const ResourceLogs &resource_logs : request->resource_logs())
     {
       const Resource &resource = resource_logs.resource();
       const std::string &resource_logs_schema_url = resource_logs.schema_url();
@@ -202,7 +204,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
     log_threaded_source_worker_close_batch(&worker.super->super);
 
   status = FINISH;
-  responder.Finish(response, response_status, this);
+  responder.Finish(*response, response_status, this);
 }
 
 template <> void
@@ -220,7 +222,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 
   int msgs_in_fetch_round = 0;
 
-  for (const ResourceMetrics &resource_metrics : request.resource_metrics())
+  for (const ResourceMetrics &resource_metrics : request->resource_metrics())
     {
       const Resource &resource = resource_metrics.resource();
       const std::string &resource_metrics_schema_url = resource_metrics.schema_url();
@@ -260,7 +262,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
     log_threaded_source_worker_close_batch(&worker.super->super);
 
   status = FINISH;
-  responder.Finish(response, response_status, this);
+  responder.Finish(*response, response_status, this);
 }
 
 #endif
