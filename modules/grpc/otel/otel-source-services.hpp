@@ -88,6 +88,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 {
   if (status == FINISH || !ok)
     {
+      worker.arena.Reset();
       delete this;
       return;
     }
