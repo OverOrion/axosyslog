@@ -43,6 +43,8 @@ using namespace opentelemetry::proto::trace::v1;
 
 #define get_ProtobufParser(s) (((OtelProtobufParser *) s)->cpp)
 
+thread_local google::protobuf::Arena ProtobufParser::arena;
+
 struct OtelProtobufParser_
 {
   LogParser super;
@@ -380,15 +382,15 @@ _map_severity_number_to_syslog_pri(SeverityNumber severity_number)
 }
 
 static bool
-_parse_log_record(LogMessage *msg)
+_parse_log_record(LogMessage *msg, google::protobuf::Arena *arena)
 {
   gssize len;
   const gchar *raw_value = _get_protobuf_field(msg, logmsg_handle::RAW_LOG, &len);
   if (!raw_value)
     return false;
 
-  LogRecord log_record;
-  if (!log_record.ParsePartialFromArray(raw_value, len))
+  LogRecord *log_record = google::protobuf::Arena::Create<LogRecord>(arena);
+  if (!log_record->ParsePartialFromArray(raw_value, len))
     {
       msg_error("OpenTelemetry: Failed to deserialize .otel_raw.log",
                 evt_tag_msg_reference(msg));
@@ -401,7 +403,7 @@ _parse_log_record(LogMessage *msg)
   log_msg_set_value_with_type(msg, logmsg_handle::TYPE, "log", -1, LM_VT_STRING);
 
   /* .otel.log.time_unix_nano */
-  const guint64 time_unix_nano = log_record.time_unix_nano();
+  const guint64 time_unix_nano = log_record->time_unix_nano();
   std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu64, time_unix_nano);
   _set_value(msg, logmsg_handle::LOG_TIME_UNIX_NANO, number_buf, LM_VT_INTEGER);
 
@@ -412,7 +414,7 @@ _parse_log_record(LogMessage *msg)
     }
 
   /* .otel.log.observed_time_unix_nano */
-  const guint64 observed_time_unix_nano = log_record.observed_time_unix_nano();
+  const guint64 observed_time_unix_nano = log_record->observed_time_unix_nano();
   std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu64, observed_time_unix_nano);
   _set_value(msg, logmsg_handle::LOG_OBSERVED_TIME_UNIX_NANO, number_buf, LM_VT_INTEGER);
 
@@ -423,39 +425,39 @@ _parse_log_record(LogMessage *msg)
     }
 
   /* .otel.log.severity_number */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIi32, log_record.severity_number());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIi32, log_record->severity_number());
   _set_value(msg, logmsg_handle::LOG_SEVERITY_NUMBER, number_buf, LM_VT_INTEGER);
 
-  msg->pri = LOG_MAKEPRI(LOG_USER, _map_severity_number_to_syslog_pri(log_record.severity_number()));
+  msg->pri = LOG_MAKEPRI(LOG_USER, _map_severity_number_to_syslog_pri(log_record->severity_number()));
 
   /* .otel.log.severity_text */
-  _set_value(msg, logmsg_handle::LOG_SEVERITY_TEXT, log_record.severity_text(), LM_VT_STRING);
+  _set_value(msg, logmsg_handle::LOG_SEVERITY_TEXT, log_record->severity_text(), LM_VT_STRING);
 
   /* MESSAGE */
   LogMessageValueType body_lmvt;
   std::string body_str_buffer;
-  const std::string &body_str = _serialize_AnyValue(log_record.body(), &body_lmvt, &body_str_buffer);
+  const std::string &body_str = _serialize_AnyValue(log_record->body(), &body_lmvt, &body_str_buffer);
   _set_value(msg, LM_V_MESSAGE, body_str, body_lmvt);
 
   /* .otel.log.body */
   log_msg_set_value_indirect_with_type(msg, logmsg_handle::LOG_BODY, LM_V_MESSAGE, 0, body_str.length(), body_lmvt);
 
   /* .otel.log.attributes */
-  _add_repeated_KeyValue_fields(msg, ".otel.log.attributes", log_record.attributes());
+  _add_repeated_KeyValue_fields(msg, ".otel.log.attributes", log_record->attributes());
 
   /* .otel.log.dropped_attributes_count */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, log_record.dropped_attributes_count());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, log_record->dropped_attributes_count());
   _set_value(msg, logmsg_handle::LOG_DROPPED_ATTRIBUTES_COUNT, number_buf, LM_VT_INTEGER);
 
   /* .otel.log.flags */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, log_record.flags());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, log_record->flags());
   _set_value(msg, logmsg_handle::LOG_FLAGS, number_buf, LM_VT_INTEGER);
 
   /* .otel.log.trace_id */
-  _set_value(msg, logmsg_handle::LOG_TRACE_ID, log_record.trace_id(), LM_VT_BYTES);
+  _set_value(msg, logmsg_handle::LOG_TRACE_ID, log_record->trace_id(), LM_VT_BYTES);
 
   /* .otel.log.span_id */
-  _set_value(msg, logmsg_handle::LOG_SPAN_ID, log_record.span_id(), LM_VT_BYTES);
+  _set_value(msg, logmsg_handle::LOG_SPAN_ID, log_record->span_id(), LM_VT_BYTES);
 
   return true;
 }
@@ -925,15 +927,15 @@ _add_metric_data_fields(LogMessage *msg, const Metric &metric)
 }
 
 static bool
-_parse_metric(LogMessage *msg)
+_parse_metric(LogMessage *msg, google::protobuf::Arena *arena)
 {
   gssize len;
   const gchar *raw_value = _get_protobuf_field(msg, logmsg_handle::RAW_METRIC, &len);
   if (!raw_value)
     return false;
 
-  Metric metric;
-  if (!metric.ParsePartialFromArray(raw_value, len))
+  Metric *metric = google::protobuf::Arena::Create<Metric>(arena);
+  if (!metric->ParsePartialFromArray(raw_value, len))
     {
       msg_error("OpenTelemetry: Failed to deserialize .otel_raw.metric",
                 evt_tag_msg_reference(msg));
@@ -944,29 +946,29 @@ _parse_metric(LogMessage *msg)
   log_msg_set_value_with_type(msg, logmsg_handle::TYPE, "metric", -1, LM_VT_STRING);
 
   /* .otel.metric.name */
-  _set_value(msg, logmsg_handle::METRIC_NAME, metric.name(), LM_VT_STRING);
+  _set_value(msg, logmsg_handle::METRIC_NAME, metric->name(), LM_VT_STRING);
 
   /* .otel.metric.description */
-  _set_value(msg, logmsg_handle::METRIC_DESCRIPTION, metric.description(), LM_VT_STRING);
+  _set_value(msg, logmsg_handle::METRIC_DESCRIPTION, metric->description(), LM_VT_STRING);
 
   /* .otel.metric.unit */
-  _set_value(msg, logmsg_handle::METRIC_UNIT, metric.unit(), LM_VT_STRING);
+  _set_value(msg, logmsg_handle::METRIC_UNIT, metric->unit(), LM_VT_STRING);
 
-  _add_metric_data_fields(msg, metric);
+  _add_metric_data_fields(msg, *metric);
 
   return true;
 }
 
 static bool
-_parse_span(LogMessage *msg)
+_parse_span(LogMessage *msg, google::protobuf::Arena *arena)
 {
   gssize len;
   const gchar *raw_value = _get_protobuf_field(msg, logmsg_handle::RAW_SPAN, &len);
   if (!raw_value)
     return false;
 
-  Span span;
-  if (!span.ParsePartialFromArray(raw_value, len))
+  Span *span = google::protobuf::Arena::Create<Span>(arena);
+  if (!span->ParsePartialFromArray(raw_value, len))
     {
       msg_error("OpenTelemetry: Failed to deserialize .otel_raw.span",
                 evt_tag_msg_reference(msg));
@@ -981,37 +983,37 @@ _parse_span(LogMessage *msg)
   char number_buf[G_ASCII_DTOSTR_BUF_SIZE];
 
   /* .otel.span.trace_id */
-  _set_value(msg, logmsg_handle::SPAN_TRACE_ID, span.trace_id(), LM_VT_BYTES);
+  _set_value(msg, logmsg_handle::SPAN_TRACE_ID, span->trace_id(), LM_VT_BYTES);
 
   /* .otel.span.span_id */
-  _set_value(msg, logmsg_handle::SPAN_SPAN_ID, span.span_id(), LM_VT_BYTES);
+  _set_value(msg, logmsg_handle::SPAN_SPAN_ID, span->span_id(), LM_VT_BYTES);
 
   /* .otel.span.trace_state */
-  _set_value(msg, logmsg_handle::SPAN_TRACE_STATE, span.trace_state(), LM_VT_STRING);
+  _set_value(msg, logmsg_handle::SPAN_TRACE_STATE, span->trace_state(), LM_VT_STRING);
 
   /* .otel.span.parent_span_id */
-  _set_value(msg, logmsg_handle::SPAN_PARENT_SPAN_ID, span.parent_span_id(), LM_VT_BYTES);
+  _set_value(msg, logmsg_handle::SPAN_PARENT_SPAN_ID, span->parent_span_id(), LM_VT_BYTES);
 
   /* .otel.span.name */
-  _set_value(msg, logmsg_handle::SPAN_NAME, span.name(), LM_VT_STRING);
+  _set_value(msg, logmsg_handle::SPAN_NAME, span->name(), LM_VT_STRING);
 
   /* .otel.span.kind */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIi32, span.kind());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIi32, span->kind());
   _set_value(msg, logmsg_handle::SPAN_KIND, number_buf, LM_VT_INTEGER);
 
   /* .otel.span.start_time_unix_nano */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu64, span.start_time_unix_nano());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu64, span->start_time_unix_nano());
   _set_value(msg, logmsg_handle::SPAN_START_TIME_UNIX_NANO, number_buf, LM_VT_INTEGER);
 
   /* .otel.span.end_time_unix_nano */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu64, span.end_time_unix_nano());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu64, span->end_time_unix_nano());
   _set_value(msg, logmsg_handle::SPAN_END_TIME_UNIX_NANO, number_buf, LM_VT_INTEGER);
 
   /* .otel.span.attributes.<...> */
-  _add_repeated_KeyValue_fields_with_prefix(msg, key_buffer, key_prefix_length, "attributes", span.attributes());
+  _add_repeated_KeyValue_fields_with_prefix(msg, key_buffer, key_prefix_length, "attributes", span->attributes());
 
   /* .otel.span.dropped_attributes_count */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, span.dropped_attributes_count());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, span->dropped_attributes_count());
   _set_value(msg, logmsg_handle::SPAN_DROPPED_ATTRIBUTES_COUNT, number_buf, LM_VT_INTEGER);
 
   /* .otel.span.events.<...> */
@@ -1020,7 +1022,7 @@ _parse_span(LogMessage *msg)
   size_t length_with_events = key_buffer.length();
 
   uint64_t event_idx = 0;
-  for (const Span::Event &event : span.events())
+  for (const Span::Event &event : span->events())
     {
       key_buffer.resize(length_with_events);
       std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu64, event_idx);
@@ -1047,7 +1049,7 @@ _parse_span(LogMessage *msg)
     }
 
   /* .otel.span.dropped_events_count */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, span.dropped_events_count());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, span->dropped_events_count());
   _set_value(msg, logmsg_handle::SPAN_DROPPED_EVENTS_COUNT, number_buf, LM_VT_INTEGER);
 
   /* .otel.span.links.<...> */
@@ -1056,7 +1058,7 @@ _parse_span(LogMessage *msg)
   size_t length_with_links = key_buffer.length();
 
   uint64_t link_idx = 0;
-  for (const Span::Link &link : span.links())
+  for (const Span::Link &link : span->links())
     {
       key_buffer.resize(length_with_links);
       std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu64, link_idx);
@@ -1085,11 +1087,11 @@ _parse_span(LogMessage *msg)
     }
 
   /* .otel.span.dropped_links_count */
-  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, span.dropped_links_count());
+  std::snprintf(number_buf, G_N_ELEMENTS(number_buf), "%" PRIu32, span->dropped_links_count());
   _set_value(msg, logmsg_handle::SPAN_DROPPED_LINKS_COUNT, number_buf, LM_VT_INTEGER);
 
   /* .otel.span.status.<...> */
-  const Status &status = span.status();
+  const Status &status = span->status();
 
   /* .otel.span.status.message */
   _set_value(msg, logmsg_handle::SPAN_STATUS_MESSAGE, status.message(), LM_VT_STRING);
@@ -1403,11 +1405,12 @@ syslogng::grpc::otel::ProtobufParser::process(LogMessage *msg)
 
   /* _parse_metadata() may invalidate the returned char pointer, so a copy is made with std::string */
   std::string type = log_msg_get_value_with_type(msg, logmsg_handle::RAW_TYPE, &len, &log_msg_type);
+  bool success = true;
 
   if (log_msg_type == LM_VT_NULL)
     {
       /* Not an opentelemetry() message or it is a syslog-ng-otlp() message already parsed in the source */
-      return true;
+      return success;
     }
 
   if (log_msg_type != LM_VT_STRING)
@@ -1415,38 +1418,55 @@ syslogng::grpc::otel::ProtobufParser::process(LogMessage *msg)
       msg_error("OpenTelemetry: unexpected .otel_raw.type LogMessage type",
                 evt_tag_msg_reference(msg),
                 evt_tag_str("log_msg_type", log_msg_value_type_to_str(log_msg_type)));
-      return false;
+      success = false;
+      goto exit;
     }
 
   if (!_parse_metadata(msg, this->set_host))
-    return false;
+    {
+      success = false;
+      goto exit;
+    }
 
   if (type == "log")
     {
-      if (!_parse_log_record(msg))
-        return false;
+      if (!_parse_log_record(msg, &arena))
+        {
+          success = false;
+          goto exit;
+        }
     }
   else if (type == "metric")
     {
-      if (!_parse_metric(msg))
-        return false;
+      if (!_parse_metric(msg, &arena))
+        {
+          success = false;
+          goto exit;
+        }
     }
   else if (type == "span")
     {
-      if (!_parse_span(msg))
-        return false;
+      if (!_parse_span(msg, &arena))
+        {
+          success = false;
+          goto exit;
+        }
     }
   else
     {
       msg_error("OpenTelemetry: unexpected .otel_raw.type",
                 evt_tag_msg_reference(msg),
                 evt_tag_str("type", type.c_str()));
-      return false;
+      success = false;
+      goto exit;
     }
 
   _unset_raw_fields(msg);
 
-  return true;
+exit:
+  arena.Reset();
+  return success;
+
 }
 
 static gboolean

@@ -37,6 +37,8 @@
 #include "opentelemetry/proto/metrics/v1/metrics.pb.h"
 #include "opentelemetry/proto/trace/v1/trace.pb.h"
 
+#include <google/protobuf/arena.h>
+
 #include <grpcpp/support/config.h>
 
 namespace syslogng {
@@ -79,6 +81,7 @@ private:
 
 private:
   bool set_host = true;
+  thread_local static google::protobuf::Arena arena;
 };
 
 }
