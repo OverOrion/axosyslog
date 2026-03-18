@@ -59,8 +59,8 @@ public:
 public:
   AsyncServiceCall(SourceWorker &worker_, S *service_, ::grpc::ServerCompletionQueue *cq_)
     : worker(worker_), service(service_), responder(&ctx), cq(cq_), status(PROCESS),
-      request(google::protobuf::Arena::CreateMessage<Req>(&worker_.arena)),
-      response(google::protobuf::Arena::CreateMessage<Res>(&worker_.arena))
+      request(google::protobuf::Arena::Create<Req>(&worker_.arena)),
+      response(google::protobuf::Arena::Create<Res>(&worker_.arena))
   {
     service->RequestExport(&ctx, request, &responder, cq, cq, this);
   }
