@@ -60,14 +60,17 @@ public:
   AsyncServiceCall(SourceWorker &worker_, S *service_, ::grpc::ServerCompletionQueue *cq_)
     : worker(worker_), service(service_), responder(&ctx), cq(cq_), status(PROCESS)
   {
-    service->RequestExport(&ctx, &request, &responder, cq, cq, this);
+    arena = worker.pop_arena();
+    request = google::protobuf::Arena::Create<Req>(arena);
+    service->RequestExport(&ctx, request, &responder, cq, cq, this);
   }
 
 private:
   SourceWorker &worker;
   S *service;
   ::grpc::ServerAsyncResponseWriter<Res> responder;
-  Req request;
+  google::protobuf::Arena *arena;
+  Req *request;
   Res response;
 
   ::grpc::ServerCompletionQueue *cq;
@@ -86,6 +89,8 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 {
   if (status == FINISH || !ok)
     {
+      arena->Reset();
+      worker.push_arena(arena);
       delete this;
       return;
     }
@@ -96,7 +101,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 
   int msgs_in_fetch_round = 0;
 
-  for (const ResourceSpans &resource_spans : request.resource_spans())
+  for (const ResourceSpans &resource_spans : request->resource_spans())
     {
       const Resource &resource = resource_spans.resource();
       const std::string &resource_spans_schema_url = resource_spans.schema_url();
@@ -144,6 +149,8 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 {
   if (status == FINISH || !ok)
     {
+      arena->Reset();
+      worker.push_arena(arena);
       delete this;
       return;
     }
@@ -154,7 +161,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 
   int msgs_in_fetch_round = 0;
 
-  for (const ResourceLogs &resource_logs : request.resource_logs())
+  for (const ResourceLogs &resource_logs : request->resource_logs())
     {
       const Resource &resource = resource_logs.resource();
       const std::string &resource_logs_schema_url = resource_logs.schema_url();
@@ -210,6 +217,8 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 {
   if (status == FINISH || !ok)
     {
+      arena->Reset();
+      worker.push_arena(arena);
       delete this;
       return;
     }
@@ -220,7 +229,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 
   int msgs_in_fetch_round = 0;
 
-  for (const ResourceMetrics &resource_metrics : request.resource_metrics())
+  for (const ResourceMetrics &resource_metrics : request->resource_metrics())
     {
       const Resource &resource = resource_metrics.resource();
       const std::string &resource_metrics_schema_url = resource_metrics.schema_url();

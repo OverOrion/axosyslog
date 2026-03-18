@@ -39,7 +39,10 @@ LogThreadedSourceWorker **otel_sd_reload_restore(LogThreadedSourceDriver *s, gin
 
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/alarm.h>
+#include <google/protobuf/arena.h>
 #include <memory>
+#include <queue>
+#include <vector>
 
 namespace syslogng {
 namespace grpc {
@@ -85,6 +88,9 @@ public:
   void run() override;
   void request_exit() override;
 
+  google::protobuf::Arena *pop_arena();
+  void push_arena(google::protobuf::Arena *arena);
+
 private:
   friend TraceServiceCall;
   friend LogsServiceCall;
@@ -96,6 +102,8 @@ private:
   bool service_calls_registered;
   ::grpc::Alarm stop_scheduler;
   StopEventCall stop_call;
+  std::vector<std::unique_ptr<google::protobuf::Arena>> arenas;
+  std::queue<google::protobuf::Arena *> arena_pool;
 };
 
 }

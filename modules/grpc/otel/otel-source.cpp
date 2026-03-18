@@ -201,6 +201,20 @@ SourceDriver::construct_worker(int worker_index)
   return &worker->super;
 }
 
+google::protobuf::Arena *
+SourceWorker::pop_arena()
+{
+  google::protobuf::Arena *arena = this->arena_pool.front();
+  this->arena_pool.pop();
+  return arena;
+}
+
+void
+SourceWorker::push_arena(google::protobuf::Arena *arena)
+{
+  this->arena_pool.push(arena);
+}
+
 
 SourceWorker::SourceWorker(GrpcSourceWorker *s, std::unique_ptr<::grpc::ServerCompletionQueue> queue)
   : syslogng::grpc::SourceWorker(s), cq(std::move(queue)), service_calls_registered(false)
@@ -233,6 +247,17 @@ syslogng::grpc::otel::SourceWorker::init()
     return true;
 
   SourceDriver &owner = static_cast<SourceDriver &>(this->get_owner());
+  /* Each in-flight ServiceCall needs its own arena.  With concurrent_requests
+   * slots per service and 3 services per worker the peak demand is
+   * 3 * concurrent_requests arenas (briefly reached when all three PROCESS
+   * events fire before their matching FINISH events are drained). */
+  int num_arenas = 3 * owner.get_concurrent_requests();
+  for (int i = 0; i < num_arenas; i++)
+    {
+      auto arena = std::make_unique<google::protobuf::Arena>();
+      this->arena_pool.push(arena.get());
+      this->arenas.push_back(std::move(arena));
+    }
 
   /* Proceed() will immediately create a new ServiceCall,
    * so creating 1 ServiceCall here results in 2 concurrent requests.
