@@ -68,15 +68,15 @@ public:
 private:
   SourceWorker &worker;
   S *service;
-  ::grpc::ServerAsyncResponseWriter<Res> responder;
-  Req *request;
-  Res *response;
-
-  ::grpc::ServerCompletionQueue *cq;
   ::grpc::ServerContext ctx;
+  ::grpc::ServerAsyncResponseWriter<Res> responder;
+  ::grpc::ServerCompletionQueue *cq;
 
   enum CallStatus { PROCESS, FINISH };
   CallStatus status;
+
+  Req *request;
+  Res *response;
 };
 
 }
