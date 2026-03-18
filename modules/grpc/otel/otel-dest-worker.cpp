@@ -77,6 +77,12 @@ DestWorker::DestWorker(GrpcDestWorker *s)
     logs_current_batch_bytes(0),
     metrics_current_batch_bytes(0),
     spans_current_batch_bytes(0),
+    logs_service_request(google::protobuf::Arena::Create<ExportLogsServiceRequest>(&arena)),
+    logs_service_response(google::protobuf::Arena::Create<ExportLogsServiceResponse>(&arena)),
+    metrics_service_request(google::protobuf::Arena::Create<ExportMetricsServiceRequest>(&arena)),
+    metrics_service_response(google::protobuf::Arena::Create<ExportMetricsServiceResponse>(&arena)),
+    trace_service_request(google::protobuf::Arena::Create<ExportTraceServiceRequest>(&arena)),
+    trace_service_response(google::protobuf::Arena::Create<ExportTraceServiceResponse>(&arena)),
     formatter(s->super.owner->super.super.super.cfg)
 {
 }
@@ -107,9 +113,9 @@ DestWorker::lookup_scope_logs(LogMessage *msg)
   get_metadata_for_current_msg(msg);
 
   ResourceLogs *resource_logs = nullptr;
-  for (int i = 0; i < logs_service_request.resource_logs_size(); i++)
+  for (int i = 0; i < logs_service_request->resource_logs_size(); i++)
     {
-      ResourceLogs *possible_resource_logs = logs_service_request.mutable_resource_logs(i);
+      ResourceLogs *possible_resource_logs = logs_service_request->mutable_resource_logs(i);
       if (MessageDifferencer::Equals(possible_resource_logs->resource(), current_msg_metadata.resource) &&
           possible_resource_logs->schema_url() == current_msg_metadata.resource_schema_url)
         {
@@ -119,7 +125,7 @@ DestWorker::lookup_scope_logs(LogMessage *msg)
     }
   if (!resource_logs)
     {
-      resource_logs = logs_service_request.add_resource_logs();
+      resource_logs = logs_service_request->add_resource_logs();
       resource_logs->mutable_resource()->CopyFrom(current_msg_metadata.resource);
       resource_logs->set_schema_url(current_msg_metadata.resource_schema_url);
     }
@@ -157,9 +163,9 @@ DestWorker::lookup_fallback_scope_logs(LogMessage *msg)
     return fallback_msg_scope_logs;
 
   ResourceLogs *resource_logs = nullptr;
-  for (int i = 0; i < logs_service_request.resource_logs_size(); i++)
+  for (int i = 0; i < logs_service_request->resource_logs_size(); i++)
     {
-      ResourceLogs *possible_resource_logs = logs_service_request.mutable_resource_logs(i);
+      ResourceLogs *possible_resource_logs = logs_service_request->mutable_resource_logs(i);
       if (MessageDifferencer::Equals(possible_resource_logs->resource(), current_msg_metadata.resource) &&
           possible_resource_logs->schema_url() == current_msg_metadata.resource_schema_url)
         {
@@ -169,7 +175,7 @@ DestWorker::lookup_fallback_scope_logs(LogMessage *msg)
     }
   if (!resource_logs)
     {
-      resource_logs = logs_service_request.add_resource_logs();
+      resource_logs = logs_service_request->add_resource_logs();
     }
 
   fallback_msg_scope_logs = resource_logs->add_scope_logs();
@@ -183,9 +189,9 @@ DestWorker::lookup_scope_metrics(LogMessage *msg)
   get_metadata_for_current_msg(msg);
 
   ResourceMetrics *resource_metrics = nullptr;
-  for (int i = 0; i < metrics_service_request.resource_metrics_size(); i++)
+  for (int i = 0; i < metrics_service_request->resource_metrics_size(); i++)
     {
-      ResourceMetrics *possible_resource_metrics = metrics_service_request.mutable_resource_metrics(i);
+      ResourceMetrics *possible_resource_metrics = metrics_service_request->mutable_resource_metrics(i);
       if (MessageDifferencer::Equals(possible_resource_metrics->resource(), current_msg_metadata.resource) &&
           possible_resource_metrics->schema_url() == current_msg_metadata.resource_schema_url)
         {
@@ -195,7 +201,7 @@ DestWorker::lookup_scope_metrics(LogMessage *msg)
     }
   if (!resource_metrics)
     {
-      resource_metrics = metrics_service_request.add_resource_metrics();
+      resource_metrics = metrics_service_request->add_resource_metrics();
       resource_metrics->mutable_resource()->CopyFrom(current_msg_metadata.resource);
       resource_metrics->set_schema_url(current_msg_metadata.resource_schema_url);
     }
@@ -227,9 +233,9 @@ DestWorker::lookup_scope_spans(LogMessage *msg)
   get_metadata_for_current_msg(msg);
 
   ResourceSpans *resource_spans = nullptr;
-  for (int i = 0; i < trace_service_request.resource_spans_size(); i++)
+  for (int i = 0; i < trace_service_request->resource_spans_size(); i++)
     {
-      ResourceSpans *possible_resource_spans = trace_service_request.mutable_resource_spans(i);
+      ResourceSpans *possible_resource_spans = trace_service_request->mutable_resource_spans(i);
       if (MessageDifferencer::Equals(possible_resource_spans->resource(), current_msg_metadata.resource) &&
           possible_resource_spans->schema_url() == current_msg_metadata.resource_schema_url)
         {
@@ -239,7 +245,7 @@ DestWorker::lookup_scope_spans(LogMessage *msg)
     }
   if (!resource_spans)
     {
-      resource_spans = trace_service_request.add_resource_spans();
+      resource_spans = trace_service_request->add_resource_spans();
       resource_spans->mutable_resource()->CopyFrom(current_msg_metadata.resource);
       resource_spans->set_schema_url(current_msg_metadata.resource_schema_url);
     }
@@ -432,9 +438,9 @@ permanent_error:
 LogThreadedResult
 DestWorker::flush_log_records()
 {
-  logs_service_response.Clear();
-  ::grpc::Status status = logs_service_stub->Export(client_context.get(), logs_service_request,
-                                                    &logs_service_response);
+  logs_service_response->Clear();
+  ::grpc::Status status = logs_service_stub->Export(client_context.get(), *logs_service_request,
+                                                    logs_service_response);
   owner.metrics.insert_grpc_request_stats(status);
 
   LogThreadedResult result;
@@ -453,9 +459,9 @@ DestWorker::flush_log_records()
 LogThreadedResult
 DestWorker::flush_metrics()
 {
-  metrics_service_response.Clear();
-  ::grpc::Status status = metrics_service_stub->Export(client_context.get(), metrics_service_request,
-                                                       &metrics_service_response);
+  metrics_service_response->Clear();
+  ::grpc::Status status = metrics_service_stub->Export(client_context.get(), *metrics_service_request,
+                                                       metrics_service_response);
   owner.metrics.insert_grpc_request_stats(status);
 
   LogThreadedResult result;
@@ -474,9 +480,9 @@ DestWorker::flush_metrics()
 LogThreadedResult
 DestWorker::flush_spans()
 {
-  trace_service_response.Clear();
-  ::grpc::Status status = trace_service_stub->Export(client_context.get(), trace_service_request,
-                                                     &trace_service_response);
+  trace_service_response->Clear();
+  ::grpc::Status status = trace_service_stub->Export(client_context.get(), *trace_service_request,
+                                                     trace_service_response);
   owner.metrics.insert_grpc_request_stats(status);
 
   LogThreadedResult result;
@@ -500,21 +506,21 @@ DestWorker::flush(LogThreadedFlushMode mode)
   if (mode == LTF_FLUSH_EXPEDITE)
     return LTR_RETRY;
 
-  if (logs_service_request.resource_logs_size() > 0)
+  if (logs_service_request->resource_logs_size() > 0)
     {
       result = flush_log_records();
       if (result != LTR_SUCCESS)
         goto exit;
     }
 
-  if (metrics_service_request.resource_metrics_size() > 0)
+  if (metrics_service_request->resource_metrics_size() > 0)
     {
       result = flush_metrics();
       if (result != LTR_SUCCESS)
         goto exit;
     }
 
-  if (trace_service_request.resource_spans_size() > 0)
+  if (trace_service_request->resource_spans_size() > 0)
     {
       result = flush_spans();
       if (result != LTR_SUCCESS)
@@ -523,9 +529,9 @@ DestWorker::flush(LogThreadedFlushMode mode)
 
 exit:
   client_context.reset();
-  logs_service_request.Clear();
-  metrics_service_request.Clear();
-  trace_service_request.Clear();
+  logs_service_request->Clear();
+  metrics_service_request->Clear();
+  trace_service_request->Clear();
   fallback_msg_scope_logs = nullptr;
 
   logs_current_batch_bytes = metrics_current_batch_bytes = spans_current_batch_bytes = 0;
