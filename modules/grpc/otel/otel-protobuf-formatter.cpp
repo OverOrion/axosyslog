@@ -324,6 +324,35 @@ _set_KeyValue_log_msg_foreach_fn(NVHandle handle, const gchar *name, const gchar
   return FALSE;
 }
 
+struct KeyValueTarget
+{
+  const char *prefix;
+  guint prefix_len;
+  RepeatedPtrField<KeyValue> *key_values;
+};
+
+static gboolean
+_set_KeyValue_multi_target_foreach_fn(NVHandle handle, const gchar *name, const gchar *value, gssize value_len,
+                                      NVType type, gpointer user_data)
+{
+  gpointer *args = (gpointer *) user_data;
+  KeyValueTarget *targets = (KeyValueTarget *) args[0];
+  guint num_targets = GPOINTER_TO_UINT(args[1]);
+
+  for (guint i = 0; i < num_targets; i++)
+    {
+      if (strncmp(name, targets[i].prefix, targets[i].prefix_len) == 0)
+        {
+          KeyValue *key_value = targets[i].key_values->Add();
+          key_value->set_key(name + targets[i].prefix_len);
+          _set_AnyValue(value, value_len, type, key_value->mutable_value(), name);
+          break;
+        }
+    }
+
+  return FALSE;
+}
+
 static SeverityNumber
 _get_log_msg_severity_number(LogMessage *msg)
 {
@@ -355,11 +384,15 @@ ProtobufFormatter::get_and_set_repeated_KeyValues(LogMessage *msg, const char *p
 }
 
 bool
-ProtobufFormatter::get_resource_and_schema_url(LogMessage *msg, Resource &resource, std::string &schema_url)
+ProtobufFormatter::get_metadata(LogMessage *msg, Resource &resource, std::string &resource_schema_url,
+                                InstrumentationScope &scope, std::string &scope_schema_url)
 {
   gssize len;
   const gchar *value;
+  bool resource_needs_scan = true;
+  bool scope_needs_scan = true;
 
+  /* Try raw resource */
   value = _get_protobuf(msg, logmsg_handle::RAW_RESOURCE, &len);
   if (value)
     {
@@ -367,27 +400,11 @@ ProtobufFormatter::get_resource_and_schema_url(LogMessage *msg, Resource &resour
         return false;
 
       value = _get_string(msg, logmsg_handle::RAW_RESOURCE_SCHEMA_URL, &len);
-      schema_url.assign(value, len);
-
-      return true;
+      resource_schema_url.assign(value, len);
+      resource_needs_scan = false;
     }
 
-  resource.set_dropped_attributes_count(_get_uint32(msg, logmsg_handle::RESOURCE_DROPPED_ATTRIBUTES_COUNT));
-
-  get_and_set_repeated_KeyValues(msg, ".otel.resource.attributes.", resource.mutable_attributes());
-
-  value = _get_string(msg, logmsg_handle::RESOURCE_SCHEMA_URL, &len);
-  schema_url.assign(value, len);
-
-  return true;
-}
-
-bool
-ProtobufFormatter::get_scope_and_schema_url(LogMessage *msg, InstrumentationScope &scope, std::string &schema_url)
-{
-  gssize len;
-  const gchar *value;
-
+  /* Try raw scope */
   value = _get_protobuf(msg, logmsg_handle::RAW_SCOPE, &len);
   if (value)
     {
@@ -395,33 +412,59 @@ ProtobufFormatter::get_scope_and_schema_url(LogMessage *msg, InstrumentationScop
         return false;
 
       value = _get_string(msg, logmsg_handle::RAW_SCOPE_SCHEMA_URL, &len);
-      schema_url.assign(value, len);
-
-      return true;
+      scope_schema_url.assign(value, len);
+      scope_needs_scan = false;
     }
 
-  value = _get_string(msg, logmsg_handle::SCOPE_NAME, &len);
-  scope.set_name(value, len);
+  if (!resource_needs_scan && !scope_needs_scan)
+    return true;
 
-  value = _get_string(msg, logmsg_handle::SCOPE_VERSION, &len);
-  scope.set_version(value, len);
+  /* Set scalar fields for non-raw paths */
+  if (resource_needs_scan)
+    {
+      resource.set_dropped_attributes_count(_get_uint32(msg, logmsg_handle::RESOURCE_DROPPED_ATTRIBUTES_COUNT));
 
-  scope.set_dropped_attributes_count(_get_uint32(msg, logmsg_handle::SCOPE_DROPPED_ATTRIBUTES_COUNT));
+      value = _get_string(msg, logmsg_handle::RESOURCE_SCHEMA_URL, &len);
+      resource_schema_url.assign(value, len);
+    }
 
-  get_and_set_repeated_KeyValues(msg, ".otel.scope.attributes.", scope.mutable_attributes());
+  if (scope_needs_scan)
+    {
+      value = _get_string(msg, logmsg_handle::SCOPE_NAME, &len);
+      scope.set_name(value, len);
 
-  value = _get_string(msg, logmsg_handle::SCOPE_SCHEMA_URL, &len);
-  schema_url.assign(value, len);
+      value = _get_string(msg, logmsg_handle::SCOPE_VERSION, &len);
+      scope.set_version(value, len);
+
+      scope.set_dropped_attributes_count(_get_uint32(msg, logmsg_handle::SCOPE_DROPPED_ATTRIBUTES_COUNT));
+
+      value = _get_string(msg, logmsg_handle::SCOPE_SCHEMA_URL, &len);
+      scope_schema_url.assign(value, len);
+    }
+
+  /* Single scan for all non-raw attribute prefixes */
+  if (resource_needs_scan && scope_needs_scan)
+    {
+      KeyValueTarget targets[] =
+      {
+        { ".otel.resource.attributes.", sizeof(".otel.resource.attributes.") - 1, resource.mutable_attributes() },
+        { ".otel.scope.attributes.", sizeof(".otel.scope.attributes.") - 1, scope.mutable_attributes() },
+      };
+      gpointer user_data[2];
+      user_data[0] = targets;
+      user_data[1] = GUINT_TO_POINTER(G_N_ELEMENTS(targets));
+      log_msg_values_foreach(msg, _set_KeyValue_multi_target_foreach_fn, user_data);
+    }
+  else if (resource_needs_scan)
+    {
+      get_and_set_repeated_KeyValues(msg, ".otel.resource.attributes.", resource.mutable_attributes());
+    }
+  else
+    {
+      get_and_set_repeated_KeyValues(msg, ".otel.scope.attributes.", scope.mutable_attributes());
+    }
 
   return true;
-}
-
-bool
-ProtobufFormatter::get_metadata(LogMessage *msg, Resource &resource, std::string &resource_schema_url,
-                                InstrumentationScope &scope, std::string &scope_schema_url)
-{
-  return get_resource_and_schema_url(msg, resource, resource_schema_url) &&
-         get_scope_and_schema_url(msg, scope, scope_schema_url);
 }
 
 void

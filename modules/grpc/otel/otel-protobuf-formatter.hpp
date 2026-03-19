@@ -85,8 +85,6 @@ public:
 
 private:
   void get_and_set_repeated_KeyValues(LogMessage *msg, const char *prefix, RepeatedPtrField<KeyValue> *key_values);
-  bool get_resource_and_schema_url(LogMessage *msg, Resource &resource, std::string &schema_url);
-  bool get_scope_and_schema_url(LogMessage *msg, InstrumentationScope &scope, std::string &schema_url);
 
   /* Metric */
   void add_exemplars(LogMessage *msg, std::string &key_buffer, RepeatedPtrField<Exemplar> *exemplars);
