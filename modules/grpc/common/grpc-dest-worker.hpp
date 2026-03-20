@@ -62,6 +62,7 @@ protected:
   DestDriver &owner;
   bool connected;
   google::protobuf::Arena arena;
+  char arena_buffer[32*1024*1024];
   std::shared_ptr<::grpc::Channel> channel;
 };
 

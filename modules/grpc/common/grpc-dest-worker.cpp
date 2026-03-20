@@ -38,7 +38,8 @@ using namespace syslogng::grpc;
 
 DestWorker::DestWorker(GrpcDestWorker *s)
   : super(s),
-    owner(*(reinterpret_cast<GrpcDestDriver *>(s->super.owner))->cpp)
+    owner(*(reinterpret_cast<GrpcDestDriver *>(s->super.owner))->cpp),
+    arena{arena_buffer, 32*1024*1024}
 {
 }
 

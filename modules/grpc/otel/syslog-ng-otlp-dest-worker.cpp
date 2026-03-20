@@ -28,6 +28,8 @@ using namespace opentelemetry::proto::logs::v1;
 ScopeLogs *
 SyslogNgDestWorker::lookup_scope_logs(LogMessage *msg)
 {
+  g_assert(logs_service_request->GetArena());
+  g_assert(logs_service_request->GetArena() == &arena);
   if (logs_service_request->resource_logs_size() > 0)
     return logs_service_request->mutable_resource_logs(0)->mutable_scope_logs(0);
 
@@ -36,10 +38,14 @@ SyslogNgDestWorker::lookup_scope_logs(LogMessage *msg)
                                        current_msg_metadata.scope, current_msg_metadata.scope_schema_url);
 
   ResourceLogs *resource_logs = logs_service_request->add_resource_logs();
+  g_assert(resource_logs->GetArena());
+  g_assert(resource_logs->GetArena() == &arena);
   resource_logs->mutable_resource()->CopyFrom(current_msg_metadata.resource);
   resource_logs->set_schema_url(current_msg_metadata.resource_schema_url);
 
   ScopeLogs *scope_logs = resource_logs->add_scope_logs();
+  g_assert(scope_logs->GetArena());
+  g_assert(scope_logs->GetArena() == &arena);
   scope_logs->mutable_scope()->CopyFrom(current_msg_metadata.scope);
   scope_logs->set_schema_url(current_msg_metadata.scope_schema_url);
 
@@ -51,6 +57,7 @@ SyslogNgDestWorker::insert(LogMessage *msg)
 {
   ScopeLogs *scope_logs = lookup_scope_logs(msg);
   LogRecord *log_record = scope_logs->add_log_records();
+  g_assert(log_record->GetArena() == &arena);
   formatter.format_syslog_ng(msg, *log_record);
 
   size_t log_record_bytes = log_record->ByteSizeLong();

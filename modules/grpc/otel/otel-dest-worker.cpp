@@ -87,6 +87,8 @@ DestWorker::DestWorker(GrpcDestWorker *s)
     spans_current_batch_bytes(0),
     formatter(s->super.owner->super.super.super.cfg)
 {
+  g_assert(&arena);
+  g_assert(logs_service_request->GetArena());
 }
 
 void
@@ -527,6 +529,8 @@ DestWorker::flush(LogThreadedFlushMode mode)
     }
 
 exit:
+  msg_error("before dest clear",  evt_tag_int("allocated", arena.SpaceAllocated()), evt_tag_int("used",
+            arena.SpaceUsed()));
   client_context.reset();
   fallback_msg_scope_logs = nullptr;
 
