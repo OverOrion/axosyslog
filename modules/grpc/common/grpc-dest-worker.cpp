@@ -32,13 +32,18 @@
 #include "scratch-buffers.h"
 #include "compat/cpp-end.h"
 
+
+constexpr const auto ARENA_SIZE = 32*1024*1024;
+
 using namespace syslogng::grpc;
 
 /* C++ Implementations */
 
 DestWorker::DestWorker(GrpcDestWorker *s)
   : super(s),
-    owner(*(reinterpret_cast<GrpcDestDriver *>(s->super.owner))->cpp)
+    owner(*(reinterpret_cast<GrpcDestDriver *>(s->super.owner))->cpp),
+    arena_buffer(ARENA_SIZE),
+    arena{arena_buffer.data(), arena_buffer.size()}
 {
 }
 

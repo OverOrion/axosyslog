@@ -61,6 +61,7 @@ protected:
   GrpcDestWorker *super;
   DestDriver &owner;
   bool connected;
+  std::vector<char> arena_buffer;
   google::protobuf::Arena arena;
   std::shared_ptr<::grpc::Channel> channel;
 };
