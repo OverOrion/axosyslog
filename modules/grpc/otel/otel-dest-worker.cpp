@@ -528,12 +528,6 @@ DestWorker::flush(LogThreadedFlushMode mode)
 
 exit:
   client_context.reset();
-  logs_service_request->Clear();
-  metrics_service_request->Clear();
-  trace_service_request->Clear();
-  trace_service_response->Clear();
-  metrics_service_response->Clear();
-  logs_service_response->Clear();
   fallback_msg_scope_logs = nullptr;
 
   int64_t before_reset_allocated = arena.SpaceAllocated();
