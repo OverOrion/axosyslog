@@ -167,8 +167,8 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 {
   if (status == FINISH || !ok)
     {
-      delete this;
       new LogsServiceCall(worker, service, cq);
+      delete this;
       return;
     }
 
