@@ -64,6 +64,8 @@ public:
     request = google::protobuf::Arena::Create<Req>(arena);
     service->RequestExport(&ctx, request, &responder, cq, cq, this);
   }
+  AsyncServiceCall(const AsyncServiceCall &other) = delete;
+  AsyncServiceCall operator=(const AsyncServiceCall &other) = delete;
 
   ~AsyncServiceCall()
   {
