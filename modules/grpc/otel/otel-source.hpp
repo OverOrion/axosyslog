@@ -88,14 +88,17 @@ public:
   void run() override;
   void request_exit() override;
 
-  google::protobuf::Arena *pop_arena();
-  void push_arena(google::protobuf::Arena *arena);
 
 private:
   friend TraceServiceCall;
   friend LogsServiceCall;
   friend MetricsServiceCall;
   friend StopEventCall;
+
+private:
+  google::protobuf::Arena *pop_arena();
+  void push_arena(google::protobuf::Arena *arena);
+
 
 private:
   std::unique_ptr<::grpc::ServerCompletionQueue> cq;
