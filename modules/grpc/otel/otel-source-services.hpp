@@ -58,7 +58,7 @@ public:
 
 public:
   AsyncServiceCall(SourceWorker &worker_, S *service_, ::grpc::ServerCompletionQueue *cq_)
-    : worker(worker_), service(service_), responder(&ctx), cq(cq_), status(PROCESS)
+    : worker(worker_), service(service_), responder(&ctx), cq(cq_), status(PROCESS_REQUEST)
   {
     service->RequestExport(&ctx, &request, &responder, cq, cq, this);
   }
@@ -73,7 +73,7 @@ private:
   ::grpc::ServerCompletionQueue *cq;
   ::grpc::ServerContext ctx;
 
-  enum CallStatus { PROCESS, FINISH };
+  enum CallStatus { PROCESS_REQUEST, SEND_RESPONSE };
   CallStatus status;
 };
 
@@ -84,7 +84,7 @@ private:
 template <> void
 syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 {
-  if (status == FINISH || !ok)
+  if (status == SEND_RESPONSE || !ok)
     {
       delete this;
       new TraceServiceCall(worker, service, cq);
@@ -135,14 +135,14 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
   if (msgs_in_fetch_round != 0)
     log_threaded_source_worker_close_batch(&worker.super->super);
 
-  status = FINISH;
+  status = SEND_RESPONSE;
   responder.Finish(response, response_status, this);
 }
 
 template <> void
 syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 {
-  if (status == FINISH || !ok)
+  if (status == SEND_RESPONSE || !ok)
     {
       delete this;
       new LogsServiceCall(worker, service, cq);
@@ -200,14 +200,14 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
   if (msgs_in_fetch_round != 0)
     log_threaded_source_worker_close_batch(&worker.super->super);
 
-  status = FINISH;
+  status = SEND_RESPONSE;
   responder.Finish(response, response_status, this);
 }
 
 template <> void
 syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 {
-  if (status == FINISH || !ok)
+  if (status == SEND_RESPONSE || !ok)
     {
       delete this;
       new MetricsServiceCall(worker, service, cq);
@@ -258,7 +258,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
   if (msgs_in_fetch_round != 0)
     log_threaded_source_worker_close_batch(&worker.super->super);
 
-  status = FINISH;
+  status = SEND_RESPONSE;
   responder.Finish(response, response_status, this);
 }
 
