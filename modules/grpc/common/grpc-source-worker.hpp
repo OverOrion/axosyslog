@@ -24,6 +24,8 @@
 #ifndef GRPC_SOURCE_WORKER_HPP
 #define GRPC_SOURCE_WORKER_HPP
 
+#include <google/protobuf/arena.h>
+
 #include "grpc-source.hpp"
 
 typedef struct GrpcSourceWorker_ GrpcSourceWorker;
@@ -52,6 +54,7 @@ public:
 protected:
   /* do not store the reference beyond local usage */
   SourceDriver &get_owner();
+  google::protobuf::Arena arena;
 };
 
 }

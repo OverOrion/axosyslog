@@ -527,6 +527,7 @@ exit:
   metrics_service_request.Clear();
   trace_service_request.Clear();
   fallback_msg_scope_logs = nullptr;
+  arena.Reset();
 
   logs_current_batch_bytes = metrics_current_batch_bytes = spans_current_batch_bytes = 0;
 
