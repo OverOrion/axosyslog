@@ -153,6 +153,8 @@ csv_scanner_options_validate(CSVScannerOptions *options, gint expected_columns)
 
 #define DEFAULT_DELIM_CHAR ','
 
+static gboolean have_simd;
+
 static gboolean
 _is_whitespace_char(gchar ch)
 {
@@ -268,7 +270,16 @@ _parse_characters_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
   gchar ch;
   CSVSimdFindResult result;
   gsize remaining = self->input_end - self->src;
-  csv_simd_find_either(self->src, remaining, '\\', self->current_quote, &result);
+
+  if (have_simd)
+    {
+      csv_simd_find_either(self->src, remaining, '\\', self->current_quote, &result);
+    }
+  else
+    {
+      result = (CSVSimdFindResult) {-1, 0};
+    }
+  
   const gchar *nexthop;
 
   if (result.offset >= 0)
@@ -498,7 +509,7 @@ _parse_value_with_whitespace_and_delimiter(CSVScanner *self)
   self->current_value_start_ofs = self->src - self->input;
 
   /* SIMD fast path for simple unquoted values with default delimiter */
-  if (!self->current_quote && !self->options->string_delimiters && !self->options->delimiters &&
+  if (have_simd && !self->current_quote && !self->options->string_delimiters && !self->options->delimiters &&
       self->options->dialect == CSV_SCANNER_ESCAPE_NONE && !(self->options->flags & CSV_SCANNER_STRIP_WHITESPACE))
     {
       gsize remaining = self->input_end - self->src;
@@ -697,6 +708,9 @@ _can_use_simd_fast_path(CSVScanner *self)
 {
   CSVScannerOptions *o = self->options;
 
+  if (!have_simd)
+    return FALSE;
+
   if (o->delimiters != NULL)
     return FALSE;
 
@@ -721,7 +735,11 @@ _can_use_simd_fast_path(CSVScanner *self)
 static gboolean
 _parse_all_fields_simd(CSVScanner *self)
 {
+#if defined(SYSLOG_NG_HAVE_AVX2) || defined(SYSLOG_NG_HAVE_NEON)
   return csv_simd_parse(self->input, self->input_end - self->input, self->fast_path_fields);
+#else
+  return FALSE;
+#endif;
 }
 
 static gboolean
@@ -833,6 +851,7 @@ csv_scanner_init(CSVScanner *scanner, CSVScannerOptions *options, const gchar *i
 
   /* Pre-allocate fast_path_fields for at least 16 columns to avoid early reallocations */
   scanner->fast_path_fields = g_array_sized_new(FALSE, FALSE, sizeof(CSVFieldOfs), 16);
+  csv_detect_cpu_features(&have_simd);
 }
 
 void

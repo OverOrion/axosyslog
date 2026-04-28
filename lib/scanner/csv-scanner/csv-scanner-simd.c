@@ -24,6 +24,18 @@
 #include "compat/glib.h"
 
 /* Per-function target attribute lets GCC and clang emit AVX2 code */
+#if defined(SYSLOG_NG_MANUAL_AVX2) && !defined(SYSLOG_NG_MANUAL_NEON)
+
+void
+csv_detect_cpu_features(gboolean *have_simd)
+{
+  *have_simd = __builtin_cpu_supports("avx2");
+}
+
+/* Per-function target attribute lets GCC and clang emit AVX2 code for
+ * this TU without requiring -mavx2 on the command line.  Clang does not
+ * treat #pragma GCC target the same as GCC, so the attribute form is the
+ * portable option. */
 #define AVX2_FN __attribute__((target("avx2")))
 
 /* Parser-level chunk: two AVX2 ymm loads (32 B each) → one 64-bit hit
@@ -424,3 +436,128 @@ csv_simd_trim_trailing_whitespace(const gchar *input, gint32 start_ofs, gint32 e
     end_ofs--;
   return end_ofs;
 }
+
+#elif defined(SYSLOG_NG_MANUAL_NEON) && !defined(SYSLOG_NG_MANUAL_AVX2)
+
+#include <sys/auxv.h>
+#include <asm/hwcap.h>
+
+void
+csv_detect_cpu_features(gboolean *have_simd)
+{
+  *have_simd = getauxval (AT_HWCAP) & HWCAP_NEON;
+}
+
+void
+csv_simd_find_either(const char *start, gsize max_len, gchar c1, gchar c2, CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+void
+csv_simd_find_either3(const char *start, gsize max_len, gchar c1, gchar c2, gchar c3, CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+void
+csv_simd_find_either4(const char *start, gsize max_len, gchar c1, gchar c2, gchar c3, gchar c4,
+                           CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+gint
+csv_simd_find_delimiter_or_quote(const char *start, gsize max_len, gchar delimiter, gchar quote_char)
+{
+  return -1;
+}
+
+void
+csv_simd_find_delim_quote_space(const char *start, gsize max_len, gchar delimiter, gchar quote_char,
+                                     CSVSimdFindTripleResult *result)
+{
+  result->offset = -1;
+  result->which = 0;
+  return;
+}
+
+gint32
+csv_simd_trim_leading_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs)
+{
+  return -1;
+}
+
+gint32
+csv_simd_trim_trailing_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs)
+{
+  return -1;
+}
+
+#else
+
+void
+csv_simd_find_either(const char *start, gsize max_len, gchar c1, gchar c2, CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+void
+csv_simd_find_either3(const char *start, gsize max_len, gchar c1, gchar c2, gchar c3, CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+void
+csv_simd_find_either4(const char *start, gsize max_len, gchar c1, gchar c2, gchar c3, gchar c4,
+                           CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+gint
+csv_simd_find_delimiter_or_quote(const char *start, gsize max_len, gchar delimiter, gchar quote_char)
+{
+  return -1;
+}
+
+void
+csv_simd_find_delim_quote_space(const char *start, gsize max_len, gchar delimiter, gchar quote_char,
+                                     CSVSimdFindTripleResult *result)
+{
+  result->offset = -1;
+  result->which = 0;
+  return;
+}
+
+gint32
+csv_simd_trim_leading_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs)
+{
+  return -1;
+}
+
+gint32
+csv_simd_trim_trailing_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs)
+{
+  return -1;
+}
+
+void
+csv_detect_cpu_features(gboolean *have_simd)
+{
+  *have_simd = 0;
+}
+
+#endif
