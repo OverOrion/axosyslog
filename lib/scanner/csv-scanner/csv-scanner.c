@@ -739,7 +739,7 @@ _parse_all_fields_simd(CSVScanner *self)
   return csv_simd_parse(self->input, self->input_end - self->input, self->fast_path_fields);
 #else
   return FALSE;
-#endif;
+#endif
 }
 
 static gboolean
