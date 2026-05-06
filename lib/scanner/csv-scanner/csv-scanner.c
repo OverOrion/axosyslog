@@ -277,9 +277,19 @@ _parse_characters_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
     }
   else
     {
-      result = (CSVSimdFindResult) {-1, 0};
+      result.offset = -1;
+      result.which = 0;
+      for (gsize i = 0; i < remaining; i++)
+        {
+          gchar c = self->src[i];
+          if (c == '\\' || c == self->current_quote)
+            {
+              result.offset = (gint) i;
+              break;
+            }
+        }
     }
-  
+
   const gchar *nexthop;
 
   if (result.offset >= 0)
