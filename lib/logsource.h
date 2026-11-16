@@ -83,6 +83,16 @@ struct _LogSource
   void (*wakeup)(LogSource *s);
   void (*schedule_dynamic_window_realloc)(LogSource *s);
 
+  /* the name resolved for the last peer address, reused within the same
+   * second to avoid a DNS cache lookup for every message of a connection */
+  struct
+  {
+    gint64 sec;
+    GSockAddr *saddr;
+    gsize name_len;
+    gchar name[256];
+  } resolved_peer;
+
   struct
   {
     /* counters */
@@ -115,10 +125,12 @@ struct _LogSource
 };
 
 /* the hot flow control state should not share a cache line with the fields
- * read on every message */
+ * read on every message. This is optimized and checked for 64-bit targets only. */
+#if GLIB_SIZEOF_VOID_P == 8
 G_STATIC_ASSERT(G_STRUCT_OFFSET(LogSource, last_ack_count) - G_STRUCT_OFFSET(LogSource,
                 metrics.window_available) >= 64);
 G_STATIC_ASSERT(G_STRUCT_OFFSET(LogSource, last_ack_count) - G_STRUCT_OFFSET(LogSource, ack_tracker) >= 64);
+#endif
 
 static inline gboolean
 log_source_free_to_send(LogSource *self)

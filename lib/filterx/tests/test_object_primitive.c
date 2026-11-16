@@ -20,6 +20,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <criterion/new/assert.h>
 #include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-object.h"
@@ -32,7 +33,7 @@ _assert_repr_equals(FilterXObject *fobj, const gchar *expected)
 {
   GString *repr = g_string_sized_new(0);
   filterx_object_repr(fobj, repr);
-  cr_assert_str_eq(repr->str, expected);
+  cr_assert(eq(str, repr->str, expected));
   g_string_free(repr, TRUE);
 }
 
@@ -66,6 +67,19 @@ Test(filterx_object, test_filterx_double_trailing_zeroes_are_removed)
   fobj = filterx_double_new(4.5);
   _assert_repr_equals(fobj, "4.5");
   filterx_object_unref(fobj);
+}
+
+Test(filterx_object, test_filterx_integer_add_inplace_may_return_the_cached_operand)
+{
+  FilterXObject *n = filterx_integer_new(1);
+  FilterXObject *zero = filterx_integer_new(0);
+
+  FilterXObject *result = filterx_object_add_inplace(n, zero);
+  cr_assert(eq(ptr, result, n));
+
+  filterx_object_unref(result);
+  filterx_object_unref(zero);
+  filterx_object_unref(n);
 }
 
 static void
